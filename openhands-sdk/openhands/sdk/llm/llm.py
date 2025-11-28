@@ -68,6 +68,7 @@ from openhands.sdk.llm.exceptions import (
 # OpenHands utilities
 from openhands.sdk.llm.llm_response import LLMResponse
 from openhands.sdk.llm.message import (
+    ImageContent,
     Message,
 )
 from openhands.sdk.llm.mixins.non_native_fc import NonNativeToolCallingMixin
@@ -928,7 +929,12 @@ class LLM(BaseModel, RetryMixin, NonNativeToolCallingMixin):
 
         for message in messages:
             message.cache_enabled = self.is_caching_prompt_active()
-            message.vision_enabled = self.vision_is_active()
+            # Enable vision if the model supports it AND the message contains images
+            has_images = any(
+                isinstance(content, ImageContent) and content.image_urls
+                for content in message.content
+            )
+            message.vision_enabled = self.vision_is_active() or has_images
             message.function_calling_enabled = self.native_tool_calling
             model_features = get_features(self.model)
             message.force_string_serializer = (
@@ -954,16 +960,21 @@ class LLM(BaseModel, RetryMixin, NonNativeToolCallingMixin):
         """
         msgs = copy.deepcopy(messages)
 
-        # Set only vision flag; skip cache_enabled and force_string_serializer
+        # Set vision flag based on model support OR message content
         vision_active = self.vision_is_active()
         for m in msgs:
-            m.vision_enabled = vision_active
+            has_images = any(
+                isinstance(content, ImageContent) and content.image_urls
+                for content in m.content
+            )
+            m.vision_enabled = vision_active or has_images
 
         # Assign system instructions as a string, collect input items
         instructions: str | None = None
         input_items: list[dict[str, Any]] = []
         for m in msgs:
-            val = m.to_responses_value(vision_enabled=vision_active)
+            # Use the message's vision_enabled flag (which now accounts for images)
+            val = m.to_responses_value(vision_enabled=m.vision_enabled)
             if isinstance(val, str):
                 s = val.strip()
                 if not s:

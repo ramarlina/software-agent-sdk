@@ -962,8 +962,6 @@ class LLM(BaseModel, RetryMixin, NonNativeToolCallingMixin):
 
         # Determine vision based on model detection
         vision_active = self.vision_is_active()
-        for m in msgs:
-            m.vision_enabled = vision_active
 
         # Assign system instructions as a string, collect input items
         instructions: str | None = None

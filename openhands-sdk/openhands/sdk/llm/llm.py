@@ -960,7 +960,7 @@ class LLM(BaseModel, RetryMixin, NonNativeToolCallingMixin):
         """
         msgs = copy.deepcopy(messages)
 
-        # Determine vision based solely on model detection; do not infer from content.
+        # Determine vision based on model detection
         vision_active = self.vision_is_active()
         for m in msgs:
             m.vision_enabled = vision_active
